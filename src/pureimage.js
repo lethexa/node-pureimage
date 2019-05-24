@@ -590,13 +590,12 @@ drawLineBresenham = function(image, line, color) {
 
 
 drawLine = function(image, line, color) {
-    //console.log('drawLine');
     var thickness = image.lineWidth || 1;
-    if(thickness === 1) {
+    if(thickness <= 1) {
         drawLineBresenham(image, line, color);
         return;
     }
-    //console.log('draw', thickness);
+    var thickness2 = thickness / 2.0;
     var x1 = line.start.x;
     var y1 = line.start.y;
     var x2 = line.end.x;
@@ -609,20 +608,20 @@ drawLine = function(image, line, color) {
     var sinMinusPiHalf = Math.sin(angle-piHalf);
     image.beginPath();
     image.moveTo(
-        x1 + thickness * cosPlusPiHalf,
-        y1 + thickness * sinPlusPiHalf
+        x1 + thickness2 * cosPlusPiHalf,
+        y1 + thickness2 * sinPlusPiHalf
     );
     image.lineTo(
-        x1 + thickness * cosMinusPiHalf,
-        y1 + thickness * sinMinusPiHalf
+        x1 + thickness2 * cosMinusPiHalf,
+        y1 + thickness2 * sinMinusPiHalf
     );
     image.lineTo(
-        x2 + thickness * cosMinusPiHalf,
-        y2 + thickness * sinMinusPiHalf
+        x2 + thickness2 * cosMinusPiHalf,
+        y2 + thickness2 * sinMinusPiHalf
     );
     image.lineTo(
-        x2 + thickness * cosPlusPiHalf,
-        y2 + thickness * sinPlusPiHalf
+        x2 + thickness2 * cosPlusPiHalf,
+        y2 + thickness2 * sinPlusPiHalf
     );
     image.closePath();
     image.fill();
