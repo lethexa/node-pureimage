@@ -76,6 +76,7 @@ function Bitmap4BBPContext(bitmap) {
 
     // ===============  style state
 
+    this.lineWidth = 1;
     this._fillColor = 0xFFFFFFFF;   // the real int holding the RGBA value
     this._fillStyle_text = "black"; // the text version set by using the fillStyle setter.
     this._strokeColor = 0x000000FF;
@@ -189,7 +190,7 @@ function Bitmap4BBPContext(bitmap) {
         var rgb = uint32.and(this._fillColor,0xFFFFFF00);
         var lines = pathToLines(this.path);
         var bounds = calcMinimumBounds(lines);
-        var startY = Math.min(bounds.y2-1, bitmap.height);
+        var startY = Math.min(bounds.y2, bitmap.height);
         var endY = Math.max(bounds.y, 0);
 
         for(var j=startY; j>=endY; j--) {
@@ -201,6 +202,9 @@ function Bitmap4BBPContext(bitmap) {
                 var start = Math.floor(ints[i]);
                 var end   = Math.floor(ints[i+1]);
                 for(var ii=start; ii<=end; ii++) {
+                    if(ii > bitmap.width)
+                        break;
+                    /*
                     if(ii == start) {
                         //first
                         var int = uint32.or(rgb,(1-fstartf)*255);
@@ -213,6 +217,7 @@ function Bitmap4BBPContext(bitmap) {
                         this.compositePixel(ii,j, int);
                         continue;
                     }
+                    */
                     //console.log("filling",ii,j);
                     this.compositePixel(ii,j, this._fillColor);
                 }
@@ -403,24 +408,6 @@ exports.encodePNG = function(bitmap, outstream, cb) {
     png.pack().pipe(outstream).on('finish', cb);
 }
 
-exports.encodePNGSync = function(bitmap) {
-    let png = new PNG({
-        width: bitmap.width,
-        height: bitmap.height,
-    });
-
-    for (let i = 0; i < bitmap.width; i++) {
-        for (let j = 0; j < bitmap.height; j++) {
-            for (let k = 0; k < 4; k++) {
-                let n = (j * bitmap.width + i) * 4 + k;
-                png.data[n] = bitmap._buffer[n];
-            }
-        }
-    }
-
-    return PNG.sync.write(png);
-}
-
 exports.encodeJPEG = function(bitmap, outstream, cb) {
     var data = {
         data:bitmap._buffer,
@@ -475,18 +462,6 @@ exports.registerFont = function(binary, family, weight, style, variant) {
                 if(cb)cb();
             });
         }
-    };
-    return _fonts[family];
-}
-exports.registerFontSync = function(binary, family, weight, style, variant) {
-    _fonts[family] = {
-        binary: binary,
-        family: family,
-        weight: weight,
-        style: style,
-        variant: variant,
-        loaded: true,
-        font: opentype.loadSync(binary),
     };
     return _fonts[family];
 }
@@ -595,7 +570,7 @@ function calcSortedIntersections(lines,y) {
 
 //Bresenham's from Rosetta Code
 // http://rosettacode.org/wiki/Bitmap/Bresenham's_line_algorithm#JavaScript
-drawLine = function(image, line, color) {
+drawLineBresenham = function(image, line, color) {
     var x0 = Math.floor(line.start.x);
     var y0 = Math.floor(line.start.y);
     var x1 = Math.floor(line.end.x);
@@ -611,7 +586,47 @@ drawLine = function(image, line, color) {
         if (e2 > -dx) { err -= dy; x0 += sx; }
         if (e2 < dy) { err += dx; y0 += sy; }
     }
-}
+};
+
+
+drawLine = function(image, line, color) {
+    //console.log('drawLine');
+    var thickness = image.lineWidth || 1;
+    if(thickness === 1) {
+        drawLineBresenham(image, line, color);
+        return;
+    }
+    //console.log('draw', thickness);
+    var x1 = line.start.x;
+    var y1 = line.start.y;
+    var x2 = line.end.x;
+    var y2 = line.end.y;
+    var piHalf = Math.PI/2;
+    var angle = Math.atan2(y2-y1,x2-x1);
+    var cosPlusPiHalf = Math.cos(angle+piHalf);
+    var sinPlusPiHalf = Math.sin(angle+piHalf);
+    var cosMinusPiHalf = Math.cos(angle-piHalf);
+    var sinMinusPiHalf = Math.sin(angle-piHalf);
+    image.beginPath();
+    image.moveTo(
+        x1 + thickness * cosPlusPiHalf,
+        y1 + thickness * sinPlusPiHalf
+    );
+    image.lineTo(
+        x1 + thickness * cosMinusPiHalf,
+        y1 + thickness * sinMinusPiHalf
+    );
+    image.lineTo(
+        x2 + thickness * cosMinusPiHalf,
+        y2 + thickness * sinMinusPiHalf
+    );
+    image.lineTo(
+        x2 + thickness * cosPlusPiHalf,
+        y2 + thickness * sinPlusPiHalf
+    );
+    image.closePath();
+    image.fill();
+};
 
 
 //composite pixel doubles the time. need to implement replace with a better thing
