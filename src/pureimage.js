@@ -81,6 +81,7 @@ function Bitmap4BBPContext(bitmap) {
     this._fillStyle_text = "black"; // the text version set by using the fillStyle setter.
     this._strokeColor = 0x000000FF;
     this._strokeStyle_text = "black";
+    this._dashArray = undefined;
     Object.defineProperty(this, 'fillStyle', {
         get: function() { return this._fillStyle_text; },
         set: function(val) {
@@ -155,6 +156,9 @@ function Bitmap4BBPContext(bitmap) {
         }
     }
 
+    this.setLineDash = function(dashArray) {
+        this._dashArray = dashArray;
+    };
 
     this.beginPath = function() {
         this.path = [];
@@ -227,6 +231,9 @@ function Bitmap4BBPContext(bitmap) {
     this.stroke = function() {
         var lines = pathToLines(this.path);
         var ctx = this;
+        if(this._dashArray)
+            return;
+//        drawPolyline(ctx, lines, ctx._strokeColor);
         lines.forEach(function(line){
             drawLine(ctx, line, ctx._strokeColor);
         });
@@ -589,6 +596,7 @@ drawLineBresenham = function(image, line, color) {
 };
 
 
+var piHalf = Math.PI/2;
 drawLine = function(image, line, color) {
     var thickness = image.lineWidth || 1;
     if(thickness <= 1) {
@@ -600,8 +608,7 @@ drawLine = function(image, line, color) {
     var y1 = line.start.y;
     var x2 = line.end.x;
     var y2 = line.end.y;
-    var piHalf = Math.PI/2;
-    var angle = Math.atan2(y2-y1,x2-x1);
+    var angle = getLineAngle(line);
     var cosPlusPiHalf = Math.cos(angle+piHalf);
     var sinPlusPiHalf = Math.sin(angle+piHalf);
     var cosMinusPiHalf = Math.cos(angle-piHalf);
@@ -626,6 +633,16 @@ drawLine = function(image, line, color) {
     image.closePath();
     image.fill();
 };
+
+var getLineAngle = function(line) {
+    var angle = Math.atan2(
+        line.end.y-line.start.y,
+        line.end.x-line.start.x
+    );
+    return angle;
+};
+
+
 
 
 //composite pixel doubles the time. need to implement replace with a better thing
